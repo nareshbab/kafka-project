@@ -65,6 +65,9 @@ public class ElasticSearchConsumer {
         properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
+        // manually commiting the offsets
+        properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+        properties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "20");
         // create consumer
         KafkaConsumer<String, String> consumer = new KafkaConsumer<String, String>(properties);
         consumer.subscribe(Arrays.asList(topic));
@@ -84,9 +87,13 @@ public class ElasticSearchConsumer {
             ConsumerRecords<String, String> records =
                     consumer.poll(Duration.ofMillis(100));
 
+            logger.info("Received" + records.count() + " records");
             for (ConsumerRecord<String, String> record: records) {
                 // where we insert data into ElasticSearch
                 String jsonString = record.value();
+
+                // 2 strategies
+                // kafka specific id
                 // String id = record.topic() + record.partition() + record.offset();
 
                 // twitter feed specific id
@@ -103,6 +110,8 @@ public class ElasticSearchConsumer {
                 logger.info(doc_id);
                 Thread.sleep(100);
             }
+            logger.info("Committing offsets");
+            consumer.commitSync();
         }
 
         // close the client gracefully
